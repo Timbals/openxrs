@@ -31,6 +31,8 @@ mod hand_tracker;
 pub use hand_tracker::*;
 mod secondary_view;
 pub use secondary_view::*;
+mod debug_utils;
+pub use debug_utils::*;
 
 pub use builder::{
     CompositionLayerBase, CompositionLayerCubeKHR, CompositionLayerCylinderKHR,

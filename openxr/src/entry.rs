@@ -1,7 +1,7 @@
 #[cfg(feature = "loaded")]
 use libloading::Library;
 use std::{
-    ffi::{CStr, CString},
+    ffi::{c_void, CStr, CString},
     mem, ptr,
     sync::Arc,
 };
@@ -118,6 +118,18 @@ impl Entry {
         required_extensions: &ExtensionSet,
         layers: &[&str],
     ) -> Result<Instance> {
+        self.create_instance_internal(app_info, required_extensions, layers, ptr::null())
+    }
+
+    /// Create an OpenXR instance with certain extensions enabled
+    /// and a pointer for the extension structure chain.
+    pub(crate) fn create_instance_internal(
+        &self,
+        app_info: &ApplicationInfo,
+        required_extensions: &ExtensionSet,
+        layers: &[&str],
+        next: *const c_void,
+    ) -> Result<Instance> {
         assert!(
             app_info.application_name.len() < sys::MAX_APPLICATION_NAME_SIZE,
             "application names are limited to {} bytes",
@@ -143,7 +155,7 @@ impl Entry {
             .collect::<Vec<_>>();
         let mut info = sys::InstanceCreateInfo {
             ty: sys::InstanceCreateInfo::TYPE,
-            next: ptr::null(),
+            next,
             create_flags: Default::default(),
             application_info: sys::ApplicationInfo {
                 application_name: [0; sys::MAX_APPLICATION_NAME_SIZE],
