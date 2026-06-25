@@ -5,6 +5,11 @@
 //! This example uses minimal abstraction for clarity. Real-world code should encapsulate and
 //! largely decouple its Vulkan and OpenXR components and handle errors gracefully.
 
+use ash::{
+    util::read_spv,
+    vk::{self, Handle},
+};
+use openxr as xr;
 use std::{
     io::Cursor,
     sync::{
@@ -14,15 +19,18 @@ use std::{
     time::Duration,
 };
 
-use ash::{
-    util::read_spv,
-    vk::{self, Handle},
-};
-use openxr as xr;
+#[cfg(target_os = "android")]
+#[unsafe(no_mangle)]
+fn android_main(app: android_activity::AndroidApp) {
+    start(app)
+}
 
-#[allow(clippy::field_reassign_with_default)] // False positive, might be fixed 1.51
-#[cfg_attr(target_os = "android", ndk_glue::main)]
-pub fn main() {
+fn main() {
+    #[cfg(not(target_os = "android"))]
+    start()
+}
+
+fn start(#[cfg(target_os = "android")] app: android_activity::AndroidApp) {
     // Handle interrupts gracefully
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
@@ -73,7 +81,7 @@ pub fn main() {
             (),
             #[cfg(target_os = "android")]
             unsafe {
-                openxr::AndroidPlatformInfo::new(ndk_glue::native_activity().activity().cast())
+                openxr::AndroidPlatformInfo::new(app.activity_as_ptr())
             },
         )
         .unwrap();
@@ -260,21 +268,13 @@ pub fn main() {
                         vk::PipelineShaderStageCreateInfo {
                             stage: vk::ShaderStageFlags::VERTEX,
                             module: vert,
-                            #[allow(
-                                clippy::manual_c_str_literals,
-                                reason = "ndk_glue::main cannot parse c string literals"
-                            )]
-                            p_name: b"main\0".as_ptr() as _,
+                            p_name: c"main".as_ptr(),
                             ..Default::default()
                         },
                         vk::PipelineShaderStageCreateInfo {
                             stage: vk::ShaderStageFlags::FRAGMENT,
                             module: frag,
-                            #[allow(
-                                clippy::manual_c_str_literals,
-                                reason = "ndk_glue::main cannot parse c string literals"
-                            )]
-                            p_name: b"main\0".as_ptr() as _,
+                            p_name: c"main".as_ptr(),
                             ..Default::default()
                         },
                     ])
@@ -484,6 +484,24 @@ pub fn main() {
                         println!("lost {} events", e.lost_event_count());
                     }
                     _ => {}
+                }
+            }
+
+            #[cfg(target_os = "android")]
+            app.poll_events(Some(Duration::from_secs(0)), |event| match event {
+                android_activity::PollEvent::Timeout => {}
+                _ => println!("Android activity event: {event:?}"),
+            });
+            #[cfg(target_os = "android")]
+            match app.input_events_iter() {
+                Ok(mut iter) => {
+                    while iter.next(|event| {
+                        println!("Android input event: {event:?}");
+                        android_activity::InputStatus::Unhandled
+                    }) {}
+                }
+                Err(error) => {
+                    println!("failed to get Android input events: {error:?}");
                 }
             }
 

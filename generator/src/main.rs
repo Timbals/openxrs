@@ -581,10 +581,8 @@ impl Parser {
                     }
                     self.finish_element();
                 }
-                Characters(ch) => {
-                    if define_ty.is_some() || define_name.is_some() {
-                        define_val = Some(ch);
-                    }
+                Characters(ch) if define_ty.is_some() || define_name.is_some() => {
+                    define_val = Some(ch);
                 }
                 EndElement { name } => {
                     if name.local_name == "type" {

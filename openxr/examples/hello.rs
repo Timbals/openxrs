@@ -1,7 +1,17 @@
 use openxr as xr;
 
-#[cfg_attr(target_os = "android", ndk_glue::main)]
+#[cfg(target_os = "android")]
+#[unsafe(no_mangle)]
+fn android_main(app: android_activity::AndroidApp) {
+    start(app)
+}
+
+#[cfg(not(target_os = "android"))]
 fn main() {
+    start()
+}
+
+fn start(#[cfg(target_os = "android")] app: android_activity::AndroidApp) {
     #[cfg(feature = "linked")]
     let entry = xr::Entry::linked().unwrap();
     #[cfg(not(feature = "linked"))]
@@ -37,7 +47,7 @@ fn main() {
             (),
             #[cfg(target_os = "android")]
             unsafe {
-                openxr::AndroidPlatformInfo::new(ndk_glue::native_activity().activity().cast())
+                openxr::AndroidPlatformInfo::new(app.activity_as_ptr())
             },
         )
         .unwrap();
