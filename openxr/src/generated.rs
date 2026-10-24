@@ -10948,330 +10948,325 @@ pub mod raw {
         }
     }
 }
-#[allow(unused)]
-pub(crate) mod builder {
-    use crate::*;
-    use std::{marker::PhantomData, mem, ops::Deref};
-    #[derive(Copy, Clone)]
-    pub struct SwapchainSubImage<'a, G: Graphics> {
-        pub swapchain: &'a Swapchain<G>,
-        pub image_rect: Rect2Di,
-        pub image_array_index: u32,
-    }
-    #[allow(clippy::needless_lifetimes)]
-    impl<'a, G: Graphics> SwapchainSubImage<'a, G> {
-        #[inline]
-        pub fn as_raw(&self) -> sys::SwapchainSubImage {
-            let Self {
-                swapchain,
-                image_rect,
-                image_array_index,
-            } = self;
-            sys::SwapchainSubImage {
-                swapchain: swapchain.as_raw(),
-                image_rect: *image_rect,
-                image_array_index: *image_array_index,
-            }
-        }
-    }
-    #[derive(Copy, Clone)]
-    pub struct CompositionLayerProjectionView<'a, G: Graphics> {
-        pub pose: Posef,
-        pub fov: Fovf,
-        pub sub_image: SwapchainSubImage<'a, G>,
-    }
-    #[allow(clippy::needless_lifetimes)]
-    impl<'a, G: Graphics> CompositionLayerProjectionView<'a, G> {
-        #[inline]
-        pub fn as_raw(&self) -> sys::CompositionLayerProjectionView {
-            let Self {
-                pose,
-                fov,
+#[non_exhaustive]
+pub enum CompositionLayer<'a, G: Graphics> {
+    Projection {
+        layer_flags: CompositionLayerFlags,
+        space: &'a Space,
+        views: &'a [CompositionLayerProjectionView<'a, G>],
+    },
+    Quad {
+        layer_flags: CompositionLayerFlags,
+        space: &'a Space,
+        eye_visibility: EyeVisibility,
+        sub_image: SwapchainSubImage<'a, G>,
+        pose: Posef,
+        size: Extent2Df,
+    },
+    CylinderKHR {
+        layer_flags: CompositionLayerFlags,
+        space: &'a Space,
+        eye_visibility: EyeVisibility,
+        sub_image: SwapchainSubImage<'a, G>,
+        pose: Posef,
+        radius: f32,
+        central_angle: f32,
+        aspect_ratio: f32,
+    },
+    CubeKHR {
+        layer_flags: CompositionLayerFlags,
+        space: &'a Space,
+        eye_visibility: EyeVisibility,
+        swapchain: &'a Swapchain<G>,
+        image_array_index: u32,
+        orientation: Quaternionf,
+    },
+    EquirectKHR {
+        layer_flags: CompositionLayerFlags,
+        space: &'a Space,
+        eye_visibility: EyeVisibility,
+        sub_image: SwapchainSubImage<'a, G>,
+        pose: Posef,
+        radius: f32,
+        scale: Vector2f,
+        bias: Vector2f,
+    },
+    Equirect2KHR {
+        layer_flags: CompositionLayerFlags,
+        space: &'a Space,
+        eye_visibility: EyeVisibility,
+        sub_image: SwapchainSubImage<'a, G>,
+        pose: Posef,
+        radius: f32,
+        central_horizontal_angle: f32,
+        upper_vertical_angle: f32,
+        lower_vertical_angle: f32,
+    },
+}
+impl<'a, G: Graphics> CompositionLayer<'a, G> {
+    pub(crate) fn as_raw(&self) -> CompositionLayerRaw {
+        match self {
+            CompositionLayer::Projection {
+                layer_flags,
+                space,
+                views,
+            } => CompositionLayerRaw {
+                projection: sys::CompositionLayerProjection {
+                    ty: sys::StructureType::COMPOSITION_LAYER_PROJECTION,
+                    next: std::ptr::null_mut(),
+                    layer_flags: *layer_flags,
+                    space: space.as_raw(),
+                    view_count: views.len() as _,
+                    views: views.as_ptr() as _,
+                },
+            },
+            CompositionLayer::Quad {
+                layer_flags,
+                space,
+                eye_visibility,
                 sub_image,
-            } = self;
-            sys::CompositionLayerProjectionView {
-                ty: sys::StructureType::COMPOSITION_LAYER_PROJECTION_VIEW,
-                next: std::ptr::null_mut(),
-                pose: *pose,
-                fov: *fov,
-                sub_image: sub_image.as_raw(),
-            }
+                pose,
+                size,
+            } => CompositionLayerRaw {
+                quad: sys::CompositionLayerQuad {
+                    ty: sys::StructureType::COMPOSITION_LAYER_QUAD,
+                    next: std::ptr::null_mut(),
+                    layer_flags: *layer_flags,
+                    space: space.as_raw(),
+                    eye_visibility: *eye_visibility,
+                    sub_image: sub_image.as_raw(),
+                    pose: *pose,
+                    size: *size,
+                },
+            },
+            CompositionLayer::CylinderKHR {
+                layer_flags,
+                space,
+                eye_visibility,
+                sub_image,
+                pose,
+                radius,
+                central_angle,
+                aspect_ratio,
+            } => CompositionLayerRaw {
+                cylinder_khr: sys::CompositionLayerCylinderKHR {
+                    ty: sys::StructureType::COMPOSITION_LAYER_CYLINDER_KHR,
+                    next: std::ptr::null_mut(),
+                    layer_flags: *layer_flags,
+                    space: space.as_raw(),
+                    eye_visibility: *eye_visibility,
+                    sub_image: sub_image.as_raw(),
+                    pose: *pose,
+                    radius: *radius,
+                    central_angle: *central_angle,
+                    aspect_ratio: *aspect_ratio,
+                },
+            },
+            CompositionLayer::CubeKHR {
+                layer_flags,
+                space,
+                eye_visibility,
+                swapchain,
+                image_array_index,
+                orientation,
+            } => CompositionLayerRaw {
+                cube_khr: sys::CompositionLayerCubeKHR {
+                    ty: sys::StructureType::COMPOSITION_LAYER_CUBE_KHR,
+                    next: std::ptr::null_mut(),
+                    layer_flags: *layer_flags,
+                    space: space.as_raw(),
+                    eye_visibility: *eye_visibility,
+                    swapchain: swapchain.as_raw(),
+                    image_array_index: *image_array_index,
+                    orientation: *orientation,
+                },
+            },
+            CompositionLayer::EquirectKHR {
+                layer_flags,
+                space,
+                eye_visibility,
+                sub_image,
+                pose,
+                radius,
+                scale,
+                bias,
+            } => CompositionLayerRaw {
+                equirect_khr: sys::CompositionLayerEquirectKHR {
+                    ty: sys::StructureType::COMPOSITION_LAYER_EQUIRECT_KHR,
+                    next: std::ptr::null_mut(),
+                    layer_flags: *layer_flags,
+                    space: space.as_raw(),
+                    eye_visibility: *eye_visibility,
+                    sub_image: sub_image.as_raw(),
+                    pose: *pose,
+                    radius: *radius,
+                    scale: *scale,
+                    bias: *bias,
+                },
+            },
+            CompositionLayer::Equirect2KHR {
+                layer_flags,
+                space,
+                eye_visibility,
+                sub_image,
+                pose,
+                radius,
+                central_horizontal_angle,
+                upper_vertical_angle,
+                lower_vertical_angle,
+            } => CompositionLayerRaw {
+                equirect2_khr: sys::CompositionLayerEquirect2KHR {
+                    ty: sys::StructureType::COMPOSITION_LAYER_EQUIRECT2_KHR,
+                    next: std::ptr::null_mut(),
+                    layer_flags: *layer_flags,
+                    space: space.as_raw(),
+                    eye_visibility: *eye_visibility,
+                    sub_image: sub_image.as_raw(),
+                    pose: *pose,
+                    radius: *radius,
+                    central_horizontal_angle: *central_horizontal_angle,
+                    upper_vertical_angle: *upper_vertical_angle,
+                    lower_vertical_angle: *lower_vertical_angle,
+                },
+            },
         }
     }
-    #[derive(Copy, Clone)]
-    pub struct ActionSetCreateInfo<'a> {
-        pub action_set_name: &'a str,
-        pub localized_action_set_name: &'a str,
-        pub priority: u32,
+}
+#[repr(C)]
+pub(crate) union CompositionLayerRaw {
+    pub(crate) base: sys::CompositionLayerBaseHeader,
+    pub(crate) projection: sys::CompositionLayerProjection,
+    pub(crate) quad: sys::CompositionLayerQuad,
+    pub(crate) cylinder_khr: sys::CompositionLayerCylinderKHR,
+    pub(crate) cube_khr: sys::CompositionLayerCubeKHR,
+    pub(crate) equirect_khr: sys::CompositionLayerEquirectKHR,
+    pub(crate) equirect2_khr: sys::CompositionLayerEquirect2KHR,
+}
+impl CompositionLayerRaw {
+    pub(crate) fn as_base(&self) -> &sys::CompositionLayerBaseHeader {
+        unsafe { &self.base }
     }
-    #[allow(clippy::needless_lifetimes)]
-    impl<'a> ActionSetCreateInfo<'a> {
-        #[inline]
-        pub fn as_raw(&self) -> sys::ActionSetCreateInfo {
-            let Self {
-                action_set_name,
-                localized_action_set_name,
-                priority,
-            } = self;
-            sys::ActionSetCreateInfo {
-                ty: sys::StructureType::ACTION_SET_CREATE_INFO,
-                next: std::ptr::null_mut(),
-                action_set_name: str_into_array(action_set_name),
-                localized_action_set_name: str_into_array(localized_action_set_name),
-                priority: *priority,
-            }
+}
+#[non_exhaustive]
+pub enum HapticData<'a> {
+    Vibration {
+        duration: Duration,
+        frequency: f32,
+        amplitude: f32,
+    },
+    PcmVibrationFB {
+        buffer: &'a [f32],
+        sample_rate: f32,
+        append: bool,
+        samples_consumed: &'a mut u32,
+    },
+}
+#[repr(C)]
+pub(crate) union HapticDataRaw {
+    pub(crate) base: sys::HapticBaseHeader,
+    pub(crate) vibration: sys::HapticVibration,
+    pub(crate) pcm_vibration_fb: sys::HapticPcmVibrationFB,
+}
+impl HapticDataRaw {
+    pub(crate) fn as_base(&self) -> &sys::HapticBaseHeader {
+        unsafe { &self.base }
+    }
+}
+#[derive(Copy, Clone)]
+pub struct SwapchainSubImage<'a, G: Graphics> {
+    pub swapchain: &'a Swapchain<G>,
+    pub image_rect: Rect2Di,
+    pub image_array_index: u32,
+}
+#[allow(clippy::needless_lifetimes)]
+impl<'a, G: Graphics> SwapchainSubImage<'a, G> {
+    #[inline]
+    pub fn as_raw(&self) -> sys::SwapchainSubImage {
+        let Self {
+            swapchain,
+            image_rect,
+            image_array_index,
+        } = self;
+        sys::SwapchainSubImage {
+            swapchain: swapchain.as_raw(),
+            image_rect: *image_rect,
+            image_array_index: *image_array_index,
         }
     }
-    #[derive(Copy, Clone)]
-    pub struct ActionCreateInfo<'a> {
-        pub action_name: &'a str,
-        pub action_type: ActionType,
-        pub subaction_paths: &'a [Path],
-        pub localized_action_name: &'a str,
-    }
-    #[allow(clippy::needless_lifetimes)]
-    impl<'a> ActionCreateInfo<'a> {
-        #[inline]
-        pub fn as_raw(&self) -> sys::ActionCreateInfo {
-            let Self {
-                action_name,
-                action_type,
-                subaction_paths,
-                localized_action_name,
-            } = self;
-            sys::ActionCreateInfo {
-                ty: sys::StructureType::ACTION_CREATE_INFO,
-                next: std::ptr::null_mut(),
-                action_name: str_into_array(action_name),
-                action_type: *action_type,
-                count_subaction_paths: subaction_paths.len() as _,
-                subaction_paths: subaction_paths.as_ptr() as _,
-                localized_action_name: str_into_array(localized_action_name),
-            }
+}
+#[derive(Copy, Clone)]
+pub struct CompositionLayerProjectionView<'a, G: Graphics> {
+    pub pose: Posef,
+    pub fov: Fovf,
+    pub sub_image: SwapchainSubImage<'a, G>,
+}
+#[allow(clippy::needless_lifetimes)]
+impl<'a, G: Graphics> CompositionLayerProjectionView<'a, G> {
+    #[inline]
+    pub fn as_raw(&self) -> sys::CompositionLayerProjectionView {
+        let Self {
+            pose,
+            fov,
+            sub_image,
+        } = self;
+        sys::CompositionLayerProjectionView {
+            ty: sys::StructureType::COMPOSITION_LAYER_PROJECTION_VIEW,
+            next: std::ptr::null_mut(),
+            pose: *pose,
+            fov: *fov,
+            sub_image: sub_image.as_raw(),
         }
     }
-    #[non_exhaustive]
-    pub enum CompositionLayer<'a, G: Graphics> {
-        Projection {
-            layer_flags: CompositionLayerFlags,
-            space: &'a Space,
-            views: &'a [CompositionLayerProjectionView<'a, G>],
-        },
-        Quad {
-            layer_flags: CompositionLayerFlags,
-            space: &'a Space,
-            eye_visibility: EyeVisibility,
-            sub_image: SwapchainSubImage<'a, G>,
-            pose: Posef,
-            size: Extent2Df,
-        },
-        CylinderKHR {
-            layer_flags: CompositionLayerFlags,
-            space: &'a Space,
-            eye_visibility: EyeVisibility,
-            sub_image: SwapchainSubImage<'a, G>,
-            pose: Posef,
-            radius: f32,
-            central_angle: f32,
-            aspect_ratio: f32,
-        },
-        CubeKHR {
-            layer_flags: CompositionLayerFlags,
-            space: &'a Space,
-            eye_visibility: EyeVisibility,
-            swapchain: &'a Swapchain<G>,
-            image_array_index: u32,
-            orientation: Quaternionf,
-        },
-        EquirectKHR {
-            layer_flags: CompositionLayerFlags,
-            space: &'a Space,
-            eye_visibility: EyeVisibility,
-            sub_image: SwapchainSubImage<'a, G>,
-            pose: Posef,
-            radius: f32,
-            scale: Vector2f,
-            bias: Vector2f,
-        },
-        Equirect2KHR {
-            layer_flags: CompositionLayerFlags,
-            space: &'a Space,
-            eye_visibility: EyeVisibility,
-            sub_image: SwapchainSubImage<'a, G>,
-            pose: Posef,
-            radius: f32,
-            central_horizontal_angle: f32,
-            upper_vertical_angle: f32,
-            lower_vertical_angle: f32,
-        },
-    }
-    impl<'a, G: Graphics> CompositionLayer<'a, G> {
-        pub(crate) fn as_raw(&self) -> CompositionLayerRaw {
-            match self {
-                CompositionLayer::Projection {
-                    layer_flags,
-                    space,
-                    views,
-                } => CompositionLayerRaw {
-                    projection: sys::CompositionLayerProjection {
-                        ty: sys::StructureType::COMPOSITION_LAYER_PROJECTION,
-                        next: std::ptr::null_mut(),
-                        layer_flags: *layer_flags,
-                        space: space.as_raw(),
-                        view_count: views.len() as _,
-                        views: views.as_ptr() as _,
-                    },
-                },
-                CompositionLayer::Quad {
-                    layer_flags,
-                    space,
-                    eye_visibility,
-                    sub_image,
-                    pose,
-                    size,
-                } => CompositionLayerRaw {
-                    quad: sys::CompositionLayerQuad {
-                        ty: sys::StructureType::COMPOSITION_LAYER_QUAD,
-                        next: std::ptr::null_mut(),
-                        layer_flags: *layer_flags,
-                        space: space.as_raw(),
-                        eye_visibility: *eye_visibility,
-                        sub_image: sub_image.as_raw(),
-                        pose: *pose,
-                        size: *size,
-                    },
-                },
-                CompositionLayer::CylinderKHR {
-                    layer_flags,
-                    space,
-                    eye_visibility,
-                    sub_image,
-                    pose,
-                    radius,
-                    central_angle,
-                    aspect_ratio,
-                } => CompositionLayerRaw {
-                    cylinder_khr: sys::CompositionLayerCylinderKHR {
-                        ty: sys::StructureType::COMPOSITION_LAYER_CYLINDER_KHR,
-                        next: std::ptr::null_mut(),
-                        layer_flags: *layer_flags,
-                        space: space.as_raw(),
-                        eye_visibility: *eye_visibility,
-                        sub_image: sub_image.as_raw(),
-                        pose: *pose,
-                        radius: *radius,
-                        central_angle: *central_angle,
-                        aspect_ratio: *aspect_ratio,
-                    },
-                },
-                CompositionLayer::CubeKHR {
-                    layer_flags,
-                    space,
-                    eye_visibility,
-                    swapchain,
-                    image_array_index,
-                    orientation,
-                } => CompositionLayerRaw {
-                    cube_khr: sys::CompositionLayerCubeKHR {
-                        ty: sys::StructureType::COMPOSITION_LAYER_CUBE_KHR,
-                        next: std::ptr::null_mut(),
-                        layer_flags: *layer_flags,
-                        space: space.as_raw(),
-                        eye_visibility: *eye_visibility,
-                        swapchain: swapchain.as_raw(),
-                        image_array_index: *image_array_index,
-                        orientation: *orientation,
-                    },
-                },
-                CompositionLayer::EquirectKHR {
-                    layer_flags,
-                    space,
-                    eye_visibility,
-                    sub_image,
-                    pose,
-                    radius,
-                    scale,
-                    bias,
-                } => CompositionLayerRaw {
-                    equirect_khr: sys::CompositionLayerEquirectKHR {
-                        ty: sys::StructureType::COMPOSITION_LAYER_EQUIRECT_KHR,
-                        next: std::ptr::null_mut(),
-                        layer_flags: *layer_flags,
-                        space: space.as_raw(),
-                        eye_visibility: *eye_visibility,
-                        sub_image: sub_image.as_raw(),
-                        pose: *pose,
-                        radius: *radius,
-                        scale: *scale,
-                        bias: *bias,
-                    },
-                },
-                CompositionLayer::Equirect2KHR {
-                    layer_flags,
-                    space,
-                    eye_visibility,
-                    sub_image,
-                    pose,
-                    radius,
-                    central_horizontal_angle,
-                    upper_vertical_angle,
-                    lower_vertical_angle,
-                } => CompositionLayerRaw {
-                    equirect2_khr: sys::CompositionLayerEquirect2KHR {
-                        ty: sys::StructureType::COMPOSITION_LAYER_EQUIRECT2_KHR,
-                        next: std::ptr::null_mut(),
-                        layer_flags: *layer_flags,
-                        space: space.as_raw(),
-                        eye_visibility: *eye_visibility,
-                        sub_image: sub_image.as_raw(),
-                        pose: *pose,
-                        radius: *radius,
-                        central_horizontal_angle: *central_horizontal_angle,
-                        upper_vertical_angle: *upper_vertical_angle,
-                        lower_vertical_angle: *lower_vertical_angle,
-                    },
-                },
-            }
+}
+#[derive(Copy, Clone)]
+pub struct ActionSetCreateInfo<'a> {
+    pub action_set_name: &'a str,
+    pub localized_action_set_name: &'a str,
+    pub priority: u32,
+}
+#[allow(clippy::needless_lifetimes)]
+impl<'a> ActionSetCreateInfo<'a> {
+    #[inline]
+    pub fn as_raw(&self) -> sys::ActionSetCreateInfo {
+        let Self {
+            action_set_name,
+            localized_action_set_name,
+            priority,
+        } = self;
+        sys::ActionSetCreateInfo {
+            ty: sys::StructureType::ACTION_SET_CREATE_INFO,
+            next: std::ptr::null_mut(),
+            action_set_name: str_into_array(action_set_name),
+            localized_action_set_name: str_into_array(localized_action_set_name),
+            priority: *priority,
         }
     }
-    #[repr(C)]
-    pub(crate) union CompositionLayerRaw {
-        pub(crate) base: sys::CompositionLayerBaseHeader,
-        pub(crate) projection: sys::CompositionLayerProjection,
-        pub(crate) quad: sys::CompositionLayerQuad,
-        pub(crate) cylinder_khr: sys::CompositionLayerCylinderKHR,
-        pub(crate) cube_khr: sys::CompositionLayerCubeKHR,
-        pub(crate) equirect_khr: sys::CompositionLayerEquirectKHR,
-        pub(crate) equirect2_khr: sys::CompositionLayerEquirect2KHR,
-    }
-    impl CompositionLayerRaw {
-        pub(crate) fn as_base(&self) -> &sys::CompositionLayerBaseHeader {
-            unsafe { &self.base }
-        }
-    }
-    #[non_exhaustive]
-    pub enum HapticData<'a> {
-        Vibration {
-            duration: Duration,
-            frequency: f32,
-            amplitude: f32,
-        },
-        PcmVibrationFB {
-            buffer: &'a [f32],
-            sample_rate: f32,
-            append: bool,
-            samples_consumed: &'a mut u32,
-        },
-    }
-    #[repr(C)]
-    pub(crate) union HapticDataRaw {
-        pub(crate) base: sys::HapticBaseHeader,
-        pub(crate) vibration: sys::HapticVibration,
-        pub(crate) pcm_vibration_fb: sys::HapticPcmVibrationFB,
-    }
-    impl HapticDataRaw {
-        pub(crate) fn as_base(&self) -> &sys::HapticBaseHeader {
-            unsafe { &self.base }
+}
+#[derive(Copy, Clone)]
+pub struct ActionCreateInfo<'a> {
+    pub action_name: &'a str,
+    pub action_type: ActionType,
+    pub subaction_paths: &'a [Path],
+    pub localized_action_name: &'a str,
+}
+#[allow(clippy::needless_lifetimes)]
+impl<'a> ActionCreateInfo<'a> {
+    #[inline]
+    pub fn as_raw(&self) -> sys::ActionCreateInfo {
+        let Self {
+            action_name,
+            action_type,
+            subaction_paths,
+            localized_action_name,
+        } = self;
+        sys::ActionCreateInfo {
+            ty: sys::StructureType::ACTION_CREATE_INFO,
+            next: std::ptr::null_mut(),
+            action_name: str_into_array(action_name),
+            action_type: *action_type,
+            count_subaction_paths: subaction_paths.len() as _,
+            subaction_paths: subaction_paths.as_ptr() as _,
+            localized_action_name: str_into_array(localized_action_name),
         }
     }
 }

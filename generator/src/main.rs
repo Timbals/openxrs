@@ -1572,7 +1572,7 @@ impl Parser {
         .iter()
         .cloned()
         .collect::<HashSet<&str>>();
-        let polymorphic_builders = self.base_headers.iter().filter_map(|(name, children)| {
+        let polymorphic_enums = self.base_headers.iter().filter_map(|(name, children)| {
             if polymorphic_whitelist.contains(&name[..]) {
                 let children = children
                     .iter()
@@ -1594,7 +1594,7 @@ impl Parser {
         .iter()
         .cloned()
         .collect::<HashSet<&str>>();
-        let builders = self.structs.iter().filter_map(|(name, s)| {
+        let structs = self.structs.iter().filter_map(|(name, s)| {
             if whitelist.contains(&name[..]) {
                 Some(self.generate_struct(&struct_meta, &simple_structs, name, s))
             } else {
@@ -1754,15 +1754,8 @@ impl Parser {
                 #(#exts)*
             }
 
-            #[allow(unused)]
-            pub(crate) mod builder {
-                use std::{mem, marker::PhantomData, ops::Deref};
-
-                use crate::*;
-
-                #(#builders)*
-                #(#polymorphic_builders)*
-            }
+            #(#polymorphic_enums)*
+            #(#structs)*
         }
     }
 

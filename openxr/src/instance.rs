@@ -707,7 +707,7 @@ impl Instance {
         localized_name: &str,
         priority: u32,
     ) -> Result<ActionSet> {
-        let info = builder::ActionSetCreateInfo {
+        let info = ActionSetCreateInfo {
             action_set_name: name,
             localized_action_set_name: localized_name,
             priority,

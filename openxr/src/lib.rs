@@ -51,10 +51,6 @@ mod localization_map_ml;
 pub use localization_map_ml::*;
 mod recommended_layer_resolution_meta;
 
-pub use builder::{
-    CompositionLayer, CompositionLayerProjectionView, HapticData, SwapchainSubImage,
-};
-
 pub type Result<T, E = sys::Result> = std::result::Result<T, E>;
 
 // Reserved semantic paths

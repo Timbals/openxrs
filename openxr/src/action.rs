@@ -145,7 +145,7 @@ impl Action<Haptic> {
                 duration,
                 frequency,
                 amplitude,
-            } => builder::HapticDataRaw {
+            } => HapticDataRaw {
                 vibration: sys::HapticVibration {
                     ty: sys::HapticVibration::TYPE,
                     next: ptr::null_mut(),
@@ -159,7 +159,7 @@ impl Action<Haptic> {
                 sample_rate,
                 append,
                 samples_consumed,
-            } => builder::HapticDataRaw {
+            } => HapticDataRaw {
                 pcm_vibration_fb: sys::HapticPcmVibrationFB {
                     ty: sys::HapticPcmVibrationFB::TYPE,
                     next: ptr::null_mut(),

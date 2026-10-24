@@ -47,7 +47,7 @@ impl ActionSet {
         localized_name: &str,
         subaction_paths: &[Path],
     ) -> Result<Action<T>> {
-        let info = builder::ActionCreateInfo {
+        let info = ActionCreateInfo {
             action_name: name,
             localized_action_name: localized_name,
             subaction_paths,
