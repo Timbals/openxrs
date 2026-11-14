@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "master", "static-in-ci-run" ]
   pull_request:
 
 permissions:
